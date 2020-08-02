@@ -2,9 +2,12 @@
 
 
 #include <memory>
+#include <queue>
+#include <mutex>
 #include "Light.h"
 #include "Image.h"
 #include "Shapes/Shape.h"
+#include "RenderAction.h"
 
 namespace RayTracer {
     class Renderer {
@@ -12,8 +15,8 @@ namespace RayTracer {
         const int width;
         const int height;
 
-        Renderer(const int width, const int height, const std::string& output, const Image& background = Image(), const float fov = M_PI / 2) : width(
-                width), height(height), outputFile(output), fov(fov) {
+        Renderer(const int width, const int height, const std::string& output, const Image& background = Image(), const float fov = M_PI / 2, const int nthreads = 8) : width(
+                width), height(height), outputFile(output), fov(fov), threadsNumber(nthreads) {
             frameBuffer = std::vector<Vec3f>(height * width);
         }
 
@@ -34,6 +37,11 @@ namespace RayTracer {
         float fov;
         Image background;
         const std::string outputFile;
+        std::queue<RenderAction> renderQueue;
+        int threadsNumber;
+        std::mutex renderQueue_mutex;
+
+        void RenderOnThread();
 
         void SaveToPng(const int channels) const;
 

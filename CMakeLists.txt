@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ray_tracing)
+project(RayTracer)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -13,7 +13,7 @@ set(STB vendor/stb/stb_image.h
         vendor/stb/stb_image_write.h
         )
 
-add_executable(ray_tracing ${STB}
+add_executable(RayTracer ${STB}
         include/geometry.h
         src/Renderer.cpp
         src/Renderer.h
@@ -23,4 +23,6 @@ add_executable(ray_tracing ${STB}
         src/Image.h
         src/Shapes/Shape.cpp
         src/Shapes/Shape.h
-        src/Material.cpp src/Material.h src/Shapes/Sphere.cpp src/Shapes/Sphere.h Application.cpp)
+        src/Material.cpp src/Material.h src/Shapes/Sphere.cpp src/Shapes/Sphere.h Application.cpp src/RenderAction.h)
+
+target_link_libraries(RayTracer pthread)

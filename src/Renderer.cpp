@@ -4,6 +4,7 @@
 #include "Renderer.h"
 #include "Shapes/Sphere.h"
 #include <thread>
+#include <chrono>
 
 void RayTracer::Renderer::AddLight(const Light& light) {
     lights.push_back(light);
@@ -22,17 +23,59 @@ void RayTracer::Renderer::AddShape(const Shape& shape) {
 //    shapes.push_back(shape_ptr);
 }
 
+void RayTracer::Renderer::RenderOnThread() {
+    while (true) {
+        RenderAction action;
+        {
+            const std::lock_guard<std::mutex> lock(renderQueue_mutex);
+            if (renderQueue.empty()) {
+                return;
+            }
+            else {
+                action = renderQueue.front();
+                renderQueue.pop();
+            }
+        }
+
+        for (size_t j = action.height1; j > action.height0; j--) {
+            for (size_t i = action.width0; i < action.width1; i++) {
+                float x = (2 * (i + 0.5) / (float) width - 1) * tan(fov / 2.) * width / (float) height;
+                float y = -(2 * (j + 0.5) / (float) height - 1) * tan(fov / 2.);
+                Vec3f dir = Vec3f(x, y, -1).normalize();
+                frameBuffer[i + j * width] = CastRay(Vec3f(0, 0, 0), dir, 0, Vec2f(i, j));
+            }
+        }
+    }
+}
+
 void RayTracer::Renderer::Render() {
-    for (size_t j = height; j > 0; j--) {
-        for (size_t i = 0; i < width; i++) {
-            float x = (2 * (i + 0.5) / (float) width - 1) * tan(fov / 2.) * width / (float) height;
-            float y = -(2 * (j + 0.5) / (float) height - 1) * tan(fov / 2.);
-            Vec3f dir = Vec3f(x, y, -1).normalize();
-            frameBuffer[i + j * width] = CastRay(Vec3f(0, 0, 0), dir, 0, Vec2f(i, j));
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    int widthStep = width / threadsNumber;
+    int heightStep = height / threadsNumber;
+
+    for (size_t i = 1; i <= threadsNumber; i++) {
+        for (size_t j = 1; j <= threadsNumber; j++) {
+            renderQueue.push(RenderAction(widthStep * (i - 1), widthStep * i - 1, heightStep * (j - 1), heightStep * j - 1));
         }
     }
 
+    std::vector<std::thread> execThreads;
+    for (size_t i = 0; i < threadsNumber; i++) {
+        std::thread thread(&RayTracer::Renderer::RenderOnThread, this);
+
+        execThreads.push_back(std::move(thread));
+    }
+
+    for (size_t i = 0; i < threadsNumber; i++) {
+        execThreads[i].join();
+    }
+
+
     SaveToPng(3);
+
+    auto finishTime = std::chrono::high_resolution_clock::now();
+    std::cout << "Execution time is : " << duration_cast<std::chrono::milliseconds>(finishTime - startTime).count() << " ms" << std::endl;
 }
 
 void RayTracer::Renderer::SaveToPng(const int channels) const {
