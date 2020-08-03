@@ -26,37 +26,64 @@ void RayTracer::Renderer::AddShape(const Shape& shape) {
 void RayTracer::Renderer::RenderOnThread() {
     while (true) {
         RenderAction action;
-        {
+
+        if (renderQueue.empty()) {
+            std::cout << "Queue is empty. Finishing thread ID: " << std::this_thread::get_id() << " execution" << std::endl;
+            return;
+        } else {
             const std::lock_guard<std::mutex> lock(renderQueue_mutex);
-            if (renderQueue.empty()) {
-                return;
-            }
-            else {
-                action = renderQueue.front();
-                renderQueue.pop();
-            }
+            std::cout << "Locked queue" << std::endl;
+            action = renderQueue.front();
+            renderQueue.pop();
+            std::cout << "Thread with ID: " << std::this_thread::get_id() << " started working on image part." << '\n';
+            std::cout << "Queue size: " << renderQueue.size() << std::endl;
         }
+        std::cout << "Unlocked queue" << std::endl;
+
 
         for (size_t j = action.height1; j > action.height0; j--) {
             for (size_t i = action.width0; i < action.width1; i++) {
+                if (i == width || j == height) continue;
                 float x = (2 * (i + 0.5) / (float) width - 1) * tan(fov / 2.) * width / (float) height;
                 float y = -(2 * (j + 0.5) / (float) height - 1) * tan(fov / 2.);
                 Vec3f dir = Vec3f(x, y, -1).normalize();
-                frameBuffer[i + j * width] = CastRay(Vec3f(0, 0, 0), dir, 0, Vec2f(i, j));
+                Vec3f res = CastRay(Vec3f(0, 0, 0), dir, 0, Vec2f(i, j));
+                frameBuffer[i + j * width] = res;
+                if (i + j * width >= frameBuffer.size()) {
+                    int size = frameBuffer.size();
+                    throw std::overflow_error("Framebuffer overflow occurred. Framebuffer size is "
+                    + std::to_string(size)
+                    + " and trying to get " + std::to_string(i + j * width) + " element.\n"
+                    + "X: " + std::to_string(i) + "Y: " + std::to_string(j));
+                }
             }
         }
+
+        std::cout << "Thread with ID: " << std::this_thread::get_id() << " finished working on image part." << std::endl;
+    }
+}
+
+void RayTracer::Renderer::RenderFirstRowOnThread() {
+    int j = 0;
+    for (size_t i = 0; i < width; i++) {
+        float x = (2 * (i + 0.5) / (float) width - 1) * tan(fov / 2.) * width / (float) height;
+        float y = -(2 * (j + 0.5) / (float) height - 1) * tan(fov / 2.);
+        Vec3f dir = Vec3f(x, y, -1).normalize();
+        Vec3f res = CastRay(Vec3f(0, 0, 0), dir, 0, Vec2f(i, j));
+        frameBuffer[i + j * width] = res;
     }
 }
 
 void RayTracer::Renderer::Render() {
     auto startTime = std::chrono::high_resolution_clock::now();
+    const int threadMultiplier = 2;
 
-    int widthStep = width / threadsNumber;
-    int heightStep = height / threadsNumber;
+    int widthStep = width / (threadsNumber * threadMultiplier);
+    int heightStep = height / (threadsNumber * threadMultiplier);
 
-    for (size_t i = 1; i <= threadsNumber; i++) {
-        for (size_t j = 1; j <= threadsNumber; j++) {
-            renderQueue.push(RenderAction(widthStep * (i - 1), widthStep * i - 1, heightStep * (j - 1), heightStep * j - 1));
+    for (size_t i = 1; i <= threadsNumber * threadMultiplier; i++) {
+        for (size_t j = 1; j <= threadsNumber * threadMultiplier; j++) {
+            renderQueue.push(RenderAction(widthStep * (i - 1), widthStep * i, heightStep * (j - 1), heightStep * j));
         }
     }
 
@@ -67,15 +94,18 @@ void RayTracer::Renderer::Render() {
         execThreads.push_back(std::move(thread));
     }
 
-    for (size_t i = 0; i < threadsNumber; i++) {
-        execThreads[i].join();
+    std::thread thread(&RayTracer::Renderer::RenderFirstRowOnThread, this);
+    execThreads.push_back(std::move(thread));
+
+    for (auto& execThread : execThreads) {
+        execThread.join();
     }
 
-
+    std::cout << "Saving image..." << std::endl;
     SaveToPng(3);
-
+    std::cout << "Saved image" << std::endl;
     auto finishTime = std::chrono::high_resolution_clock::now();
-    std::cout << "Execution time is : " << duration_cast<std::chrono::milliseconds>(finishTime - startTime).count() << " ms" << std::endl;
+    std::cout << "Execution time is: " << duration_cast<std::chrono::milliseconds>(finishTime - startTime).count() << " ms" << std::endl;
 }
 
 void RayTracer::Renderer::SaveToPng(const int channels) const {

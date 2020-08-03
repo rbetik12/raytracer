@@ -42,6 +42,7 @@ namespace RayTracer {
         std::mutex renderQueue_mutex;
 
         void RenderOnThread();
+        void RenderFirstRowOnThread();
 
         void SaveToPng(const int channels) const;
 
