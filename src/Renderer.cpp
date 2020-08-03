@@ -28,17 +28,12 @@ void RayTracer::Renderer::RenderOnThread() {
         RenderAction action;
 
         if (renderQueue.empty()) {
-            std::cout << "Queue is empty. Finishing thread ID: " << std::this_thread::get_id() << " execution" << std::endl;
             return;
         } else {
             const std::lock_guard<std::mutex> lock(renderQueue_mutex);
-            std::cout << "Locked queue" << std::endl;
             action = renderQueue.front();
             renderQueue.pop();
-            std::cout << "Thread with ID: " << std::this_thread::get_id() << " started working on image part." << '\n';
-            std::cout << "Queue size: " << renderQueue.size() << std::endl;
         }
-        std::cout << "Unlocked queue" << std::endl;
 
 
         for (size_t j = action.height1; j > action.height0; j--) {
@@ -58,8 +53,6 @@ void RayTracer::Renderer::RenderOnThread() {
                 }
             }
         }
-
-        std::cout << "Thread with ID: " << std::this_thread::get_id() << " finished working on image part." << std::endl;
     }
 }
 
@@ -101,9 +94,7 @@ void RayTracer::Renderer::Render() {
         execThread.join();
     }
 
-    std::cout << "Saving image..." << std::endl;
     SaveToPng(3);
-    std::cout << "Saved image" << std::endl;
     auto finishTime = std::chrono::high_resolution_clock::now();
     std::cout << "Execution time is: " << duration_cast<std::chrono::milliseconds>(finishTime - startTime).count() << " ms" << std::endl;
 }
@@ -137,9 +128,10 @@ Vec3f RayTracer::Renderer::CastRay(const Vec3f& orig, const Vec3f& dir, size_t d
         float dist = 0;
         env.RayIntersect(orig, dir, dist);
         Vec3f p = orig + dir * dist;
-        int a = (atan2(p.z, p.x) / (2 * M_PI) + .5) * background.GetWidth();
-        int b = acos(p.y / 100) / M_PI * background.GetHeight();
-        return background.GetImage()[a + b * background.GetWidth()];
+        size_t a = (atan2(p.z, p.x) / (2 * M_PI) + .5) * background.GetWidth();
+        size_t  b = acos(p.y / 100) / M_PI * background.GetHeight();
+        size_t  bgPixelIndex = (a + b * background.GetWidth()) % (background.GetWidth() * background.GetHeight());
+        return background.GetImage()[bgPixelIndex];
     }
 
     Vec3f reflect_dir = Reflect(dir, normal).normalize();
