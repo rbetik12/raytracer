@@ -6,7 +6,7 @@ Repo description is pretty enough for understanding that project purpose. 👀
 - ~~Single threaded~~ Multithreaded
 - ~~Weird support for different output images resolution (I almost always get SIGFAULT)~~ Supports different rendering resolutions
 - Hardcoded scene (4 spheres and 2 light objects)
-- No input system (Cannot control raytracer without recompiling)
+- ~~No input system (Cannot control raytracer without recompiling)~~ Console line arguments is used for control (resolution, threads amount, etc)
 
 ## Scene example(the only possible variant now, if you don't want to hardcode all scene description)
 ![Scene photo](https://i.imgur.com/dJ907o6.png)
