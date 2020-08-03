@@ -131,6 +131,8 @@ Vec3f RayTracer::Renderer::CastRay(const Vec3f& orig, const Vec3f& dir, size_t d
         size_t a = (atan2(p.z, p.x) / (2 * M_PI) + .5) * background.GetWidth();
         size_t  b = acos(p.y / 100) / M_PI * background.GetHeight();
         size_t  bgPixelIndex = (a + b * background.GetWidth()) % (background.GetWidth() * background.GetHeight());
+        if (bgPixelIndex >= background.GetImage().size())
+            return Vec3f(0, 0, 0);
         return background.GetImage()[bgPixelIndex];
     }
 

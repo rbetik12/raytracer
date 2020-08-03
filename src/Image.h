@@ -7,11 +7,17 @@ namespace RayTracer {
     public:
         Image() {
             empty = true;
+            image = std::vector<Vec3f>();
         }
 
         Image(const std::string& filename) : filename(filename) {
-            empty = false;
-            LoadImage();
+            if (filename.empty()) {
+                empty = true;
+                image = std::vector<Vec3f>();
+            } else {
+                empty = false;
+                LoadImage();
+            }
         }
 
         const std::vector<Vec3f>& GetImage() {
