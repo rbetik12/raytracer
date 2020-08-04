@@ -23,6 +23,6 @@ add_executable(RayTracer ${STB}
         src/Image.h
         src/Shapes/Shape.cpp
         src/Shapes/Shape.h
-        src/Material.cpp src/Material.h src/Shapes/Sphere.cpp src/Shapes/Sphere.h Application.cpp src/RenderAction.h src/Parser/ArgParser.cpp src/Parser/ArgParser.h src/Parser/Args.h)
+        src/Material.cpp src/Material.h src/Shapes/Sphere.cpp src/Shapes/Sphere.h Application.cpp src/RenderAction.h src/Parser/ArgParser.cpp src/Parser/ArgParser.h src/Parser/Args.h src/Parser/SceneParser.cpp src/Parser/SceneParser.h)
 
 target_link_libraries(RayTracer pthread)
